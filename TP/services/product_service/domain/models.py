@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass
 class Product:
-    """Entité Produit du domaine métier"""
-    SerialNumber: str
-    Nom: str
-    Description: str
+    """Entité métier du produit"""
+    serial_number: str  # Le 'pk' du tableau
+    nom: str
+    description: str

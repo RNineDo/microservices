@@ -3,7 +3,8 @@ from dataclasses import dataclass
 
 @dataclass
 class ProductDTO:
-    """Objet utilisé pour transférer les données vers le service"""
-    SerialNumber: str
-    Nom: str
-    Description: str
+    """Objet de transfert pour la création/modification"""
+    serial_number: str
+    nom: str
+    description: str
+

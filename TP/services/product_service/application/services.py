@@ -1,17 +1,17 @@
 # application/services.py
+from domain.models import Product
+
 class ProductService:
-    """Service orchestrant les opérations sur les produits"""
+    """Service applicatif piloté par le Unit of Work"""
     def __init__(self, uow):
         self.uow = uow
 
-    def add_product(self, dto: ProductDTO):
+    def create_product(self, dto: ProductDTO):
         with self.uow:
-            from domain.models import Product
-            # Transformation du DTO en Entité Métier
             product = Product(
-                SerialNumber=dto.SerialNumber,
-                Nom=dto.Nom,
-                Description=dto.Description
+                serial_number=dto.serial_number,
+                nom=dto.nom,
+                description=dto.description
             )
             self.uow.products.add(product)
             self.uow.commit()

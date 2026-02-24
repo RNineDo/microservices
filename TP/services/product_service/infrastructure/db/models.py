@@ -1,10 +1,10 @@
 # infrastructure/db/models.py
-class ProductDBModel:
-    """Deuxième modèle : gère la sérialisation JSON"""
+class ProductPersistenceModel:
+    """Traduit l'entité Domaine pour le stockage JSON"""
     @staticmethod
-    def to_dict(product):
+    def to_json(product):
         return {
-            "serial_number": product.SerialNumber,
-            "nom": product.Nom,
-            "description": product.Description
+            "pk": product.serial_number,
+            "name": product.nom,
+            "description": product.description
         }
