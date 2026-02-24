@@ -1,11 +1,10 @@
 # infrastructure/db/models.py
-class ImageDBModel:
-    """Représentation de l'image telle qu'elle est stockée en JSON"""
+class ProductDBModel:
+    """Deuxième modèle : gère la sérialisation JSON"""
     @staticmethod
-    def to_json(entity):
+    def to_dict(product):
         return {
-            "id": entity.id,
-            "path": entity.path,
-            "status": entity.status,
-            "created_at": entity.created_at.isoformat()
+            "serial_number": product.SerialNumber,
+            "nom": product.Nom,
+            "description": product.Description
         }

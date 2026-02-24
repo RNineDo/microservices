@@ -2,7 +2,8 @@
 from dataclasses import dataclass
 
 @dataclass
-class ImageDTO:
-    """Objet de transfert de données"""
-    path: str
-    status: str
+class ProductDTO:
+    """Objet utilisé pour transférer les données vers le service"""
+    SerialNumber: str
+    Nom: str
+    Description: str
