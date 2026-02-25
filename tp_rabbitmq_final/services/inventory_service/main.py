@@ -1,14 +1,17 @@
 import os
+import time
 import threading
 from services.inventory_service.application.services.crud_service import StockController
 from services.inventory_service.infrastructure.messaging.rep_gateway import GatewayResponder
 from services.inventory_service.infrastructure.messaging.sub_product_created import ProductCreatedListener
 from services.inventory_service.infrastructure.messaging.sub_orderline_created import OrderLineCreatedListener
+from services.inventory_service.infrastructure.messaging.pair_product import ProductPairServer
 
 
 def main():
     db_url = os.getenv("DB_URL", "postgresql://admin:secret@postgres:5432/inventory_db")
-    rmq_host = os.getenv("RABBITMQ_HOST", "rabbitmq")
+
+    time.sleep(2)
 
     controller = StockController(db_url)
 
@@ -38,15 +41,22 @@ def main():
         if product_id:
             controller.decrement_stock(product_id, quantity, warehouse_id)
 
-    product_listener = ProductCreatedListener(on_product_created, rmq_host)
-    orderline_listener = OrderLineCreatedListener(on_orderline_created, rmq_host)
+    def pair_handler(message: dict) -> dict:
+        action = message.get("action")
+        if action == "get_stock":
+            product_id = message.get("product_id")
+            return controller.fetch_stock_by_product(product_id)
+        return {"error": "Action PAIR inconnue"}
 
-    thread_sub1 = threading.Thread(target=product_listener.start_listening, daemon=True)
-    thread_sub2 = threading.Thread(target=orderline_listener.start_listening, daemon=True)
-    thread_sub1.start()
-    thread_sub2.start()
+    product_listener = ProductCreatedListener(on_product_created)
+    orderline_listener = OrderLineCreatedListener(on_orderline_created)
+    pair_server = ProductPairServer(pair_handler)
 
-    responder = GatewayResponder(dispatch, rmq_host)
+    threading.Thread(target=product_listener.start_listening, daemon=True).start()
+    threading.Thread(target=orderline_listener.start_listening, daemon=True).start()
+    threading.Thread(target=pair_server.start_listening, daemon=True).start()
+
+    responder = GatewayResponder(dispatch)
     responder.start_listening()
 
 

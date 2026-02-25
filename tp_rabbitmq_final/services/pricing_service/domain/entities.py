@@ -5,4 +5,5 @@ from typing import Optional
 class PriceRecord(BaseModel):
     id: Optional[str] = None
     product_id: str
-    price: float = 0.0
+    amount: float = 0.0
+    currency: str = "EUR"

@@ -5,11 +5,11 @@ from services.order_service.infrastructure.messaging.pub_order_created import Or
 
 
 class PurchaseHandler:
-    def __init__(self, db_url: str, rabbitmq_host: str):
+    def __init__(self, db_url: str, pub_addr: str = "tcp://*:5556"):
         self._uow = PurchaseWorkUnit(db_url)
         self._store = PurchaseStore(self._uow)
         self._line_store = PurchaseLineStore(self._uow)
-        self._event_emitter = OrderEventEmitter(rabbitmq_host)
+        self._event_emitter = OrderEventEmitter(pub_addr)
 
     def register(self, data: dict) -> dict:
         dto = NewOrderInput(**data)

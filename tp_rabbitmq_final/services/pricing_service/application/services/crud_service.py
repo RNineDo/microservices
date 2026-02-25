@@ -20,8 +20,8 @@ class PriceManager:
 
     def modify_by_product(self, data: dict) -> dict:
         product_id = data["product_id"]
-        dto = ModifyPricingInput(price=data["price"])
-        updated = self._store.edit_by_product(product_id, dto.model_dump())
+        dto = ModifyPricingInput(amount=data.get("amount"), currency=data.get("currency"))
+        updated = self._store.edit_by_product(product_id, dto.model_dump(exclude_none=True))
         if not updated:
             return {"error": "Tarif introuvable pour ce produit"}
         return updated
@@ -35,4 +35,4 @@ class PriceManager:
     def auto_create_pricing(self, product_id: str):
         existing = self._store.find_by_product_id(product_id)
         if not existing:
-            self._store.insert({"product_id": product_id, "price": 0.0})
+            self._store.insert({"product_id": product_id, "amount": 0.0, "currency": "EUR"})

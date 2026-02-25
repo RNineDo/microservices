@@ -4,14 +4,17 @@ from typing import Optional
 
 class NewPricingInput(BaseModel):
     product_id: str
-    price: float = 0.0
+    amount: float = 0.0
+    currency: str = "EUR"
 
 
 class ModifyPricingInput(BaseModel):
-    price: float
+    amount: Optional[float] = None
+    currency: Optional[str] = None
 
 
 class PricingOutput(BaseModel):
     id: str
     product_id: str
-    price: float
+    amount: float
+    currency: str

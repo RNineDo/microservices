@@ -9,7 +9,8 @@ class PricingModel(Base):
 
     id = Column(String, primary_key=True)
     product_id = Column(String, nullable=False, unique=True)
-    price = Column(Float, nullable=False, default=0.0)
+    amount = Column(Float, nullable=False, default=0.0)
+    currency = Column(String(10), nullable=False, default="EUR")
 
 
 def build_tables(db_url: str):

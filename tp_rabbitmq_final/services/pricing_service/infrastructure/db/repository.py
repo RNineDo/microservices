@@ -12,7 +12,8 @@ class PriceStore:
             record = PricingModel(
                 id=str(uuid.uuid4()),
                 product_id=data["product_id"],
-                price=data.get("price", 0.0),
+                amount=data.get("amount", 0.0),
+                currency=data.get("currency", "EUR"),
             )
             session.add(record)
             session.flush()
@@ -29,7 +30,7 @@ class PriceStore:
             if not record:
                 return None
             for key, value in data.items():
-                if hasattr(record, key):
+                if hasattr(record, key) and value is not None:
                     setattr(record, key, value)
             session.flush()
             return self._to_dict(record)
@@ -47,5 +48,6 @@ class PriceStore:
         return {
             "id": record.id,
             "product_id": record.product_id,
-            "price": record.price,
+            "amount": record.amount,
+            "currency": record.currency,
         }

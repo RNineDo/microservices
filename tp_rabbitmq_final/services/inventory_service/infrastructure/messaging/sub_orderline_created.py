@@ -1,40 +1,22 @@
-import pika
+import zmq
 import json
-import time
+import os
 
 
 class OrderLineCreatedListener:
-    def __init__(self, on_orderline_created, rabbitmq_host: str = "rabbitmq"):
+    def __init__(self, on_orderline_created, connect_addr: str = None):
         self._callback = on_orderline_created
-        self._host = rabbitmq_host
+        self._addr = connect_addr or os.getenv("ORDER_PUB_ADDR", "tcp://order_service:5556")
 
     def start_listening(self):
-        for _ in range(15):
-            try:
-                conn = pika.BlockingConnection(
-                    pika.ConnectionParameters(host=self._host)
-                )
-                channel = conn.channel()
-                channel.exchange_declare(exchange="events", exchange_type="topic")
-                result = channel.queue_declare(queue="inventory_orderline_created", durable=True)
-                queue_name = result.method.queue
-                channel.queue_bind(
-                    exchange="events",
-                    queue=queue_name,
-                    routing_key="orderline.created",
-                )
-                channel.basic_consume(
-                    queue=queue_name,
-                    on_message_callback=self._handle_event,
-                    auto_ack=True,
-                )
-                print("[InventoryService] Abonne a orderline.created")
-                channel.start_consuming()
-            except pika.exceptions.AMQPConnectionError:
-                print("[InventoryService] Attente RabbitMQ pour SUB orderline.created...")
-                time.sleep(3)
-
-    def _handle_event(self, ch, method, props, body):
-        data = json.loads(body)
-        print(f"[InventoryService] Evenement orderline.created recu: {data}")
-        self._callback(data)
+        ctx = zmq.Context()
+        socket = ctx.socket(zmq.SUB)
+        socket.connect(self._addr)
+        socket.setsockopt_string(zmq.SUBSCRIBE, "orderline.created")
+        print(f"[InventoryService] SUB orderline.created sur {self._addr}")
+        while True:
+            msg = socket.recv_string()
+            topic, raw_data = msg.split(" ", 1)
+            data = json.loads(raw_data)
+            print(f"[InventoryService] Evenement orderline.created recu: {data}")
+            self._callback(data)

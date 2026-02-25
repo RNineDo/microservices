@@ -1,13 +1,16 @@
 import os
+import time
 import threading
 from services.pricing_service.application.services.crud_service import PriceManager
 from services.pricing_service.infrastructure.messaging.rep_gateway import GatewayResponder
 from services.pricing_service.infrastructure.messaging.sub_product_created import ProductCreatedListener
+from services.pricing_service.infrastructure.messaging.pair_product import ProductPairServer
 
 
 def main():
     db_url = os.getenv("DB_URL", "postgresql://admin:secret@postgres:5432/pricing_db")
-    rmq_host = os.getenv("RABBITMQ_HOST", "rabbitmq")
+
+    time.sleep(2)
 
     manager = PriceManager(db_url)
 
@@ -28,11 +31,20 @@ def main():
         if product_id:
             manager.auto_create_pricing(product_id)
 
-    product_listener = ProductCreatedListener(on_product_created, rmq_host)
-    thread_sub = threading.Thread(target=product_listener.start_listening, daemon=True)
-    thread_sub.start()
+    def pair_handler(message: dict) -> dict:
+        action = message.get("action")
+        if action == "get_price":
+            product_id = message.get("product_id")
+            return manager.fetch_by_product(product_id)
+        return {"error": "Action PAIR inconnue"}
 
-    responder = GatewayResponder(dispatch, rmq_host)
+    product_listener = ProductCreatedListener(on_product_created)
+    pair_server = ProductPairServer(pair_handler)
+
+    threading.Thread(target=product_listener.start_listening, daemon=True).start()
+    threading.Thread(target=pair_server.start_listening, daemon=True).start()
+
+    responder = GatewayResponder(dispatch)
     responder.start_listening()
 
 
