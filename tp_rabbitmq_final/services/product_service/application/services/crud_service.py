@@ -7,12 +7,13 @@ from services.product_service.infrastructure.messaging.pair_inventory import Inv
 
 
 class ProductHandler:
-    def __init__(self, db_url: str, rabbitmq_host: str):
+    def __init__(self, db_url: str, pub_addr: str = "tcp://*:5556",
+                 pricing_addr: str = None, inventory_addr: str = None):
         self._uow = ProductWorkUnit(db_url)
         self._store = ProductStore(self._uow)
-        self._event_emitter = ProductEventEmitter(rabbitmq_host)
-        self._pricing_client = PricingPairClient(rabbitmq_host)
-        self._inventory_client = InventoryPairClient(rabbitmq_host)
+        self._event_emitter = ProductEventEmitter(pub_addr)
+        self._pricing_client = PricingPairClient(pricing_addr)
+        self._inventory_client = InventoryPairClient(inventory_addr)
 
     def register(self, data: dict) -> dict:
         dto = NewProductInput(**data)
@@ -35,7 +36,8 @@ class ProductHandler:
             name=record["name"],
             description=record.get("description"),
             category=record["category"],
-            price=pricing_info.get("price"),
+            amount=pricing_info.get("amount"),
+            currency=pricing_info.get("currency"),
             stock=inventory_info.get("quantity"),
         )
         return result.model_dump()

@@ -19,5 +19,6 @@ class ProductOutput(BaseModel):
     name: str
     description: Optional[str] = None
     category: str
-    price: Optional[float] = None
+    amount: Optional[float] = None
+    currency: Optional[str] = None
     stock: Optional[int] = None

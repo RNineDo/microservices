@@ -1,11 +1,13 @@
 import os
+import time
 from services.customer_service.application.services.crud_service import ClientManager
 from services.customer_service.infrastructure.messaging.rep_gateway import GatewayResponder
 
 
 def main():
     db_url = os.getenv("DB_URL", "postgresql://admin:secret@postgres:5432/customer_db")
-    rmq_host = os.getenv("RABBITMQ_HOST", "rabbitmq")
+
+    time.sleep(2)
 
     manager = ClientManager(db_url)
 
@@ -22,7 +24,7 @@ def main():
             return {"error": f"Action inconnue: {action}"}
         return fn(data)
 
-    responder = GatewayResponder(dispatch, rmq_host)
+    responder = GatewayResponder(dispatch)
     responder.start_listening()
 
 

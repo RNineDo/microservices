@@ -1,59 +1,22 @@
-import pika
-import json
-import uuid
-import time
+import zmq
+import os
 
 
 class PricingPairClient:
-    def __init__(self, rabbitmq_host: str = "rabbitmq"):
-        self._host = rabbitmq_host
-        self._conn = None
-        self._channel = None
-        self._reply_queue = None
-        self._response = None
-        self._corr_id = None
-
-    def _ensure_connection(self):
-        if self._conn and self._conn.is_open:
-            return
-        for _ in range(10):
-            try:
-                self._conn = pika.BlockingConnection(
-                    pika.ConnectionParameters(host=self._host)
-                )
-                self._channel = self._conn.channel()
-                result = self._channel.queue_declare(queue="", exclusive=True)
-                self._reply_queue = result.method.queue
-                self._channel.basic_consume(
-                    queue=self._reply_queue,
-                    on_message_callback=self._on_reply,
-                    auto_ack=True,
-                )
-                return
-            except pika.exceptions.AMQPConnectionError:
-                time.sleep(2)
-        raise RuntimeError("Connexion RabbitMQ impossible")
-
-    def _on_reply(self, ch, method, props, body):
-        if self._corr_id == props.correlation_id:
-            self._response = json.loads(body)
+    def __init__(self, connect_addr: str = None):
+        self._addr = connect_addr or os.getenv("PRICING_PAIR_ADDR", "tcp://pricing_service:5557")
+        self._ctx = zmq.Context()
+        self._socket = self._ctx.socket(zmq.PAIR)
+        self._socket.connect(self._addr)
 
     def fetch_price(self, product_id: str) -> dict:
-        self._ensure_connection()
-        self._response = None
-        self._corr_id = str(uuid.uuid4())
-        message = {"action": "get_by_product", "data": {"product_id": product_id}}
-        self._channel.basic_publish(
-            exchange="",
-            routing_key="pricing_queue",
-            properties=pika.BasicProperties(
-                reply_to=self._reply_queue,
-                correlation_id=self._corr_id,
-            ),
-            body=json.dumps(message),
-        )
+        self._socket.send_json({"action": "get_price", "product_id": product_id})
         try:
-            self._conn.process_data_events(time_limit=5)
-        except Exception:
-            pass
-        return self._response or {}
+            return self._socket.recv_json(flags=zmq.NOBLOCK)
+        except zmq.Again:
+            import time
+            time.sleep(0.5)
+            try:
+                return self._socket.recv_json(flags=zmq.NOBLOCK)
+            except zmq.Again:
+                return {}
