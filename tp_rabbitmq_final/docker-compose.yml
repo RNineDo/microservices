@@ -1,0 +1,102 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+      POSTGRES_MULTIPLE_DATABASES: product_db,customer_db,inventory_db,pricing_db,order_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-multi-db.sh:/docker-entrypoint-initdb.d/init-multi-db.sh
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  gateway_service:
+    build: .
+    command: python -m services.gateway_service.main
+    ports:
+      - "8000:8000"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  product_service:
+    build: .
+    command: python -m services.product_service.main
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      DB_URL: postgresql://admin:secret@postgres:5432/product_db
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  customer_service:
+    build: .
+    command: python -m services.customer_service.main
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      DB_URL: postgresql://admin:secret@postgres:5432/customer_db
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  inventory_service:
+    build: .
+    command: python -m services.inventory_service.main
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      DB_URL: postgresql://admin:secret@postgres:5432/inventory_db
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  pricing_service:
+    build: .
+    command: python -m services.pricing_service.main
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      DB_URL: postgresql://admin:secret@postgres:5432/pricing_db
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  order_service:
+    build: .
+    command: python -m services.order_service.main
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      DB_URL: postgresql://admin:secret@postgres:5432/order_db
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pg_data:
