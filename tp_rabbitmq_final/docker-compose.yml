@@ -1,15 +1,4 @@
 services:
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   postgres:
     image: postgres:16
     environment:
@@ -27,26 +16,14 @@ services:
       timeout: 3s
       retries: 10
 
-  gateway_service:
-    build: .
-    command: python -m services.gateway_service.main
-    ports:
-      - "8000:8000"
-    environment:
-      RABBITMQ_HOST: rabbitmq
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-
   product_service:
     build: .
     command: python -m services.product_service.main
     environment:
-      RABBITMQ_HOST: rabbitmq
       DB_URL: postgresql://admin:secret@postgres:5432/product_db
+      PRICING_PAIR_ADDR: tcp://pricing_service:5557
+      INVENTORY_PAIR_ADDR: tcp://inventory_service:5557
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       postgres:
         condition: service_healthy
 
@@ -54,11 +31,8 @@ services:
     build: .
     command: python -m services.customer_service.main
     environment:
-      RABBITMQ_HOST: rabbitmq
       DB_URL: postgresql://admin:secret@postgres:5432/customer_db
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       postgres:
         condition: service_healthy
 
@@ -66,11 +40,10 @@ services:
     build: .
     command: python -m services.inventory_service.main
     environment:
-      RABBITMQ_HOST: rabbitmq
       DB_URL: postgresql://admin:secret@postgres:5432/inventory_db
+      PRODUCT_PUB_ADDR: tcp://product_service:5556
+      ORDER_PUB_ADDR: tcp://order_service:5556
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       postgres:
         condition: service_healthy
 
@@ -78,11 +51,9 @@ services:
     build: .
     command: python -m services.pricing_service.main
     environment:
-      RABBITMQ_HOST: rabbitmq
       DB_URL: postgresql://admin:secret@postgres:5432/pricing_db
+      PRODUCT_PUB_ADDR: tcp://product_service:5556
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       postgres:
         condition: service_healthy
 
@@ -90,13 +61,28 @@ services:
     build: .
     command: python -m services.order_service.main
     environment:
-      RABBITMQ_HOST: rabbitmq
       DB_URL: postgresql://admin:secret@postgres:5432/order_db
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       postgres:
         condition: service_healthy
+
+  gateway_service:
+    build: .
+    command: python -m services.gateway_service.main
+    ports:
+      - "8000:8000"
+    environment:
+      PRODUCT_REP_ADDR: tcp://product_service:5555
+      CUSTOMER_REP_ADDR: tcp://customer_service:5555
+      INVENTORY_REP_ADDR: tcp://inventory_service:5555
+      PRICING_REP_ADDR: tcp://pricing_service:5555
+      ORDER_REP_ADDR: tcp://order_service:5555
+    depends_on:
+      - product_service
+      - customer_service
+      - inventory_service
+      - pricing_service
+      - order_service
 
 volumes:
   pg_data:
